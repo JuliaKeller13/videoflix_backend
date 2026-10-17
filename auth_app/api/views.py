@@ -5,11 +5,15 @@ from django.db import transaction
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import status
+from rest_framework.exceptions import AuthenticationFailed
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.authentication import JWTAuthentication
+from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from auth_app.api.authentication import validate_origin
 from auth_app.api.serializers import RegistrationSerializer
 from auth_app.utils import send_activation_email
 
@@ -76,4 +80,26 @@ class LoginView(APIView):
         options = {"httponly": True, "secure": not settings.DEBUG, "samesite": "Lax"}
         response.set_cookie("access_token", str(refresh.access_token), **options)
         response.set_cookie("refresh_token", str(refresh), **options)
+        return response
+
+
+class TokenRefreshView(APIView):
+    """Refresh access tokens using a refresh-token cookie."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        """Issue a new access token from a refresh cookie."""
+        validate_origin(request)
+        try:
+            refresh = RefreshToken(request.COOKIES["refresh_token"])
+            access = refresh.access_token
+            JWTAuthentication().get_user(access)
+        except (KeyError, TokenError, AuthenticationFailed):
+            return Response({"message": "Invalid refresh token."}, status=401)
+        response = Response({"message": "Token refreshed."}, status=200)
+        response.set_cookie(
+            "access_token", str(access), httponly=True,
+            secure=not settings.DEBUG, samesite="Lax")
         return response

@@ -1,4 +1,5 @@
 from pathlib import Path
+from datetime import timedelta
 
 import os
 from dotenv import load_dotenv
@@ -150,3 +151,13 @@ STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 FRONTEND_ACTIVATION_URL = os.environ["FRONTEND_ACTIVATION_URL"]
+
+REST_FRAMEWORK = {
+    "DEFAULT_AUTHENTICATION_CLASSES": [
+        "auth_app.api.authentication.CookieJWTAuthentication",
+    ],
+}
+
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
+}
