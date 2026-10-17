@@ -103,3 +103,19 @@ class TokenRefreshView(APIView):
             "access_token", str(access), httponly=True,
             secure=not settings.DEBUG, samesite="Lax")
         return response
+
+
+class LogoutView(APIView):
+    """Handle logout by removing JWT cookies."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        """Remove authentication cookies after checking the origin."""
+        validate_origin(request)
+        response = Response({"message": "Logout successful."}, status=200)
+        options = {"path": "/", "samesite": "Lax"}
+        response.delete_cookie("access_token", **options)
+        response.delete_cookie("refresh_token", **options)
+        return response
