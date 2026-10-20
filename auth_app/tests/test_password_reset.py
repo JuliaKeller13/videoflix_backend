@@ -25,6 +25,7 @@ class PasswordResetTests(APITestCase):
     def setUp(self):
         """Create an active test user."""
         super().setUp()
+        self.client.defaults["HTTP_ORIGIN"] = "http://127.0.0.1:5500"
         self.user = User.objects.create_user(
             username="test@example.com",
             email="test@example.com",

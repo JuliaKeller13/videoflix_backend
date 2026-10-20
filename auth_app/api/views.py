@@ -21,10 +21,7 @@ from auth_app.api.serializers import (
     PasswordResetRequestSerializer,
     RegistrationSerializer,
 )
-from auth_app.utils import (
-    send_activation_email,
-    send_password_reset_email,
-)
+from auth_app.utils import send_activation_email, send_password_reset_email
 
 
 User = get_user_model()
@@ -39,6 +36,7 @@ class RegisterView(APIView):
     @transaction.atomic
     def post(self, request):
         """Register a user and initiate account activation."""
+        validate_origin(request)
         serializer = RegistrationSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         user = serializer.save()
@@ -146,6 +144,7 @@ class PasswordResetView(APIView):
 
     def post(self, request):
         """Send a reset link without revealing account existence."""
+        validate_origin(request)
         serializer = PasswordResetRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         email = serializer.validated_data["email"]
@@ -182,6 +181,7 @@ class PasswordConfirmView(APIView):
 
     def post(self, request, uidb64, token):
         """Validate and save the new password."""
+        validate_origin(request)
         user = self._get_valid_user(uidb64, token)
         serializer = PasswordConfirmSerializer(
             data=request.data, context={"user": user}

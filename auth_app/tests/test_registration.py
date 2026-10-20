@@ -15,6 +15,7 @@ class RegistrationTests(APITestCase):
     def setUp(self):
         """Prepare valid registration data for each test."""
         super().setUp()
+        self.client.defaults["HTTP_ORIGIN"] = "http://127.0.0.1:5500"
         self.payload = {
             "email": "test@example.com",
             "password": "SecurePassword123!",

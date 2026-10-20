@@ -23,6 +23,7 @@ class PasswordConfirmTests(APITestCase):
     def setUp(self):
         """Prepare a user, reset link, and valid passwords."""
         super().setUp()
+        self.client.defaults["HTTP_ORIGIN"] = "http://127.0.0.1:5500"
         self.user = User.objects.create_user(
             username="test@example.com",
             password="OldSecurePassword123!",
