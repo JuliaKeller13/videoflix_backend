@@ -1,5 +1,3 @@
-"""Integration tests for JWT cookie authentication."""
-
 from django.contrib.auth import get_user_model
 from django.test import override_settings
 from django.urls import path
