@@ -116,14 +116,20 @@ class TokenRefreshView(APIView):
 
 
 class LogoutView(APIView):
-    """Handle logout by removing JWT cookies."""
+    """Handle logout by removing and revoking JWT cookies."""
 
     permission_classes = [AllowAny]
     authentication_classes = []
 
     def post(self, request):
-        """Remove authentication cookies after checking the origin."""
+        """Revoke the refresh token and remove cookies."""
         validate_origin(request)
+        raw_token = request.COOKIES.get("refresh_token")
+        if raw_token:
+            try:
+                RefreshToken(raw_token).blacklist()
+            except TokenError:
+                pass
         response = Response({"message": "Logout successful."}, status=200)
         options = {"path": "/", "samesite": "Lax"}
         response.delete_cookie("access_token", **options)
