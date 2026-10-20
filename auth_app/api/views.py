@@ -14,6 +14,10 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from auth_app.api.authentication import validate_origin
+from auth_app.api.password_reset import (
+    PasswordResetRequestSerializer,
+    send_password_reset_email,
+)
 from auth_app.api.serializers import RegistrationSerializer
 from auth_app.utils import send_activation_email
 
@@ -119,3 +123,23 @@ class LogoutView(APIView):
         response.delete_cookie("access_token", **options)
         response.delete_cookie("refresh_token", **options)
         return response
+
+
+class PasswordResetView(APIView):
+    """Handle password reset email requests."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def post(self, request):
+        """Send a reset link without revealing account existence."""
+        serializer = PasswordResetRequestSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        email = serializer.validated_data["email"]
+        user = User.objects.filter(email__iexact=email, is_active=True).first()
+        if user is not None:
+            send_password_reset_email(user)
+        return Response(
+            {"detail": "An email has been sent to reset your password."},
+            status=status.HTTP_200_OK,
+        )
