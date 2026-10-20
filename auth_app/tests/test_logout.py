@@ -1,4 +1,6 @@
 from django.test import override_settings
+from django.contrib.auth import get_user_model
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -49,3 +51,20 @@ class LogoutTests(APITestCase):
         """Reject logout requests without an origin."""
         response = self.client.post("/api/logout/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_logout_revokes_refresh_token(self):
+        """Prevent refreshing tokens after logout."""
+        user = get_user_model().objects.create_user(
+            username="test@example.com"
+        )
+        token = str(RefreshToken.for_user(user))
+        self.client.cookies["refresh_token"] = token
+        response = self.client.post(
+            "/api/logout/", HTTP_ORIGIN=TRUSTED_ORIGIN
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.client.cookies["refresh_token"] = token
+        response = self.client.post(
+            "/api/token/refresh/", HTTP_ORIGIN=TRUSTED_ORIGIN
+        )
+        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
