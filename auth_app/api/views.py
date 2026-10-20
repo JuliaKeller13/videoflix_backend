@@ -78,7 +78,8 @@ class LoginView(APIView):
     authentication_classes = []
 
     def post(self, request):
-        """Authenticate credentials and issue JWT cookies."""
+        """Authenticate credentials from the trusted frontend."""
+        validate_origin(request)
         email = request.data.get("email")
         password = request.data.get("password")
         user = authenticate(request, username=email, password=password)
