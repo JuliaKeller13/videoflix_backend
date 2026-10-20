@@ -68,3 +68,34 @@ class RegistrationSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 {"email": "Please check your registration details."}
             ) from exc
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    """Validate the email address for a password reset request."""
+
+    email = serializers.EmailField()
+
+
+class PasswordConfirmSerializer(serializers.Serializer):
+    """Validate the new password and its confirmation."""
+
+    new_password = serializers.CharField(
+        write_only=True, trim_whitespace=False
+    )
+    confirm_password = serializers.CharField(
+        write_only=True, trim_whitespace=False
+    )
+
+    def validate(self, attrs):
+        """Check password confirmation and strength."""
+        if attrs["new_password"] != attrs["confirm_password"]:
+            raise serializers.ValidationError(
+                {"confirm_password": "Passwords do not match."}
+            )
+        try:
+            validate_password(attrs["new_password"], self.context["user"])
+        except DjangoValidationError as exc:
+            raise serializers.ValidationError(
+                {"new_password": exc.messages}
+            ) from exc
+        return attrs

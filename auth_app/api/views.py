@@ -1,3 +1,5 @@
+from binascii import Error as Base64Error
+
 from django.conf import settings
 from django.contrib.auth import authenticate, get_user_model
 from django.contrib.auth.tokens import default_token_generator
@@ -5,7 +7,7 @@ from django.db import transaction
 from django.utils.encoding import force_str
 from django.utils.http import urlsafe_base64_decode
 from rest_framework import status
-from rest_framework.exceptions import AuthenticationFailed
+from rest_framework.exceptions import AuthenticationFailed, ValidationError
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -14,12 +16,15 @@ from rest_framework_simplejwt.exceptions import TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from auth_app.api.authentication import validate_origin
-from auth_app.api.password_reset import (
+from auth_app.api.serializers import (
+    PasswordConfirmSerializer,
     PasswordResetRequestSerializer,
+    RegistrationSerializer,
+)
+from auth_app.utils import (
+    send_activation_email,
     send_password_reset_email,
 )
-from auth_app.api.serializers import RegistrationSerializer
-from auth_app.utils import send_activation_email
 
 
 User = get_user_model()
@@ -105,7 +110,8 @@ class TokenRefreshView(APIView):
         response = Response({"message": "Token refreshed."}, status=200)
         response.set_cookie(
             "access_token", str(access), httponly=True,
-            secure=not settings.DEBUG, samesite="Lax")
+            secure=not settings.DEBUG, samesite="Lax"
+        )
         return response
 
 
@@ -141,5 +147,42 @@ class PasswordResetView(APIView):
             send_password_reset_email(user)
         return Response(
             {"detail": "An email has been sent to reset your password."},
+            status=status.HTTP_200_OK,
+        )
+
+
+class PasswordConfirmView(APIView):
+    """Confirm password changes using an emailed reset token."""
+
+    permission_classes = [AllowAny]
+    authentication_classes = []
+
+    def _get_valid_user(self, uidb64, token):
+        """Find the user and validate the reset link."""
+        try:
+            user_id = force_str(urlsafe_base64_decode(uidb64))
+            user = User.objects.get(pk=user_id)
+        except (ValueError, TypeError, OverflowError, UnicodeDecodeError,
+                Base64Error, User.DoesNotExist) as exc:
+            raise ValidationError(
+                {"detail": "Invalid or expired reset link."}
+            ) from exc
+        if not user.is_active or not default_token_generator.check_token(
+            user, token
+        ):
+            raise ValidationError({"detail": "Invalid or expired reset link."})
+        return user
+
+    def post(self, request, uidb64, token):
+        """Validate and save the new password."""
+        user = self._get_valid_user(uidb64, token)
+        serializer = PasswordConfirmSerializer(
+            data=request.data, context={"user": user}
+        )
+        serializer.is_valid(raise_exception=True)
+        user.set_password(serializer.validated_data["new_password"])
+        user.save(update_fields=["password"])
+        return Response(
+            {"detail": "Your Password has been successfully reset."},
             status=status.HTTP_200_OK,
         )
