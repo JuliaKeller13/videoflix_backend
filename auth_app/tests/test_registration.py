@@ -1,5 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.core import mail
+from django.db import IntegrityError
+from unittest.mock import patch
 from rest_framework import status
 from rest_framework.test import APITestCase
 
@@ -87,3 +89,23 @@ class RegistrationTests(APITestCase):
         self.assertEqual(mail.outbox[0].to, [self.payload["email"]])
         self.assertIn("uid=", mail.outbox[0].body)
         self.assertIn("token=", mail.outbox[0].body)
+
+    def test_registration_handles_integrity_error(self):
+        """Return a validation error when user creation fails."""
+        payload = {
+            "email": "test@example.com",
+            "password": "SecurePassword123!",
+            "confirmed_password": "SecurePassword123!",
+        }
+
+        with patch(
+            "auth_app.api.serializers.User.objects.create_user",
+            side_effect=IntegrityError,
+        ):
+            response = self.client.post("/api/register/", payload, format="json")
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(
+            response.data,
+            {"email": "Please check your registration details."},
+        )
