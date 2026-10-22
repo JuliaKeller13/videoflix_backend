@@ -22,8 +22,10 @@ class VideoSegmentTests(APITestCase):
             password="SecurePassword123!",
         )
         cls.video = Video.objects.create(
-            title="Test Movie", description="Test Description",
-            category="Drama", thumbnail="thumbnail/test.jpg",
+            title="Test Movie",
+            description="Test Description",
+            category="Drama",
+            thumbnail="thumbnail/test.jpg",
         )
 
     def setUp(self):
@@ -95,3 +97,10 @@ class VideoSegmentTests(APITestCase):
         url = f"/api/video/{self.video.pk}/720p/000.ts/"
         response = self.client.get(url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_segment_works_without_trailing_slash(self):
+        """Serve segments directly without redirecting."""
+        self._create_segment()
+        response = self.client.get(self.url.rstrip("/"))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response["Content-Type"], "video/MP2T")

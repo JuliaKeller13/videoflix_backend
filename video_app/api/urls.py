@@ -20,4 +20,9 @@ urlpatterns = [
         VideoSegmentView.as_view(),
         name="video-segment",
     ),
+    path(
+        "video/<int:movie_id>/<str:resolution>/<str:segment>",
+        VideoSegmentView.as_view(),
+        name="video-segment-no-slash",
+    ),
 ]
