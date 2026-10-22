@@ -1,3 +1,5 @@
+from urllib.parse import parse_qs, urlsplit
+
 from django.contrib.auth import get_user_model
 from django.contrib.auth.tokens import default_token_generator
 from django.core import mail
@@ -41,9 +43,11 @@ class PasswordResetTests(APITestCase):
         self.assertEqual(response.data, SUCCESS_RESPONSE)
         self.assertEqual(len(mail.outbox), 1)
         uid = urlsafe_base64_encode(force_bytes(self.user.pk))
-        token = default_token_generator.make_token(self.user)
-        expected = f"confirm_password.html?uid={uid}&token={token}"
-        self.assertIn(expected, mail.outbox[0].body)
+        link = mail.outbox[0].body.strip().splitlines()[-1]
+        self.assertTrue(link.startswith("http://127.0.0.1:5500/"))
+        self.assertIn(f"confirm_password.html?uid={uid}", link)
+        token = parse_qs(urlsplit(link).query)["token"][0]
+        self.assertTrue(default_token_generator.check_token(self.user, token))
 
     def test_unknown_email_returns_generic_response(self):
         """Do not reveal whether an account exists."""
