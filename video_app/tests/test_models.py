@@ -1,4 +1,3 @@
-
 from tempfile import TemporaryDirectory
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -8,7 +7,7 @@ from video_app.models import Video
 
 
 class VideoModelTests(TestCase):
-    """Test storage of original video files."""
+    """Test storage of original videos and thumbnails."""
 
     def setUp(self):
         """Use isolated storage for uploaded test files."""
@@ -40,3 +39,14 @@ class VideoModelTests(TestCase):
             category="Drama", thumbnail="thumbnail/test.jpg",
         )
         self.assertFalse(video.original_video)
+
+    def test_thumbnail_can_be_omitted(self):
+        """Allow videos without an uploaded thumbnail."""
+        video = Video(
+            title="Test Movie",
+            description="Thumbnail will be generated",
+            category="Nature",
+            original_video="videos/demo.mp4",
+        )
+        video.full_clean()
+        self.assertFalse(video.thumbnail)

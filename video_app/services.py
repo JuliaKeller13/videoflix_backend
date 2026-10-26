@@ -19,13 +19,33 @@ def convert_video_to_hls(source, movie_id, resolution):
         "-preset", "veryfast", "-threads", "2", "-c:a", "aac",
         "-f", "hls", "-hls_time", "4", "-hls_playlist_type", "vod",
         "-hls_segment_filename", str(folder / "%03d.ts"),
-        str(folder / "index.m3u8")]
+        str(folder / "index.m3u8"),
+    ]
     subprocess.run(command, check=True, timeout=180)
 
 
+def generate_thumbnail(source, movie_id):
+    """Extract a JPEG thumbnail from the video at second one."""
+    folder = Path(settings.MEDIA_ROOT) / "thumbnail"
+    folder.mkdir(parents=True, exist_ok=True)
+    thumbnail = folder / f"{movie_id}.jpg"
+    command = [
+        "ffmpeg", "-nostdin", "-y", "-ss", "1",
+        "-i", str(source), "-frames:v", "1", str(thumbnail),
+    ]
+    subprocess.run(command, check=True, timeout=30)
+    return thumbnail
+
+
 def process_video(movie_id):
-    """Convert an uploaded video into all supported resolutions."""
+    """Generate a missing thumbnail and convert the video to HLS."""
     video = Video.objects.get(pk=movie_id)
+    if not video.thumbnail:
+        thumbnail = generate_thumbnail(video.original_video.path, movie_id)
+        video.thumbnail = Path(thumbnail).relative_to(
+            settings.MEDIA_ROOT
+        ).as_posix()
+        video.save(update_fields=["thumbnail"])
     for resolution in ("480p", "720p", "1080p"):
         convert_video_to_hls(
             video.original_video.path, movie_id, resolution
