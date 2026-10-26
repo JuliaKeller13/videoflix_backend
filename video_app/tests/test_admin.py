@@ -30,8 +30,10 @@ class VideoAdminTests(TestCase):
         url = reverse("admin:video_app_video_add")
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        for field in ("title", "description", "category",
-                      "thumbnail", "original_video"):
+        for field in (
+            "title", "description", "category",
+            "thumbnail", "original_video",
+        ):
             self.assertContains(response, f'name="{field}"')
 
     @patch("django_rq.get_queue")
@@ -61,3 +63,33 @@ class VideoAdminTests(TestCase):
         with self.captureOnCommitCallbacks(execute=True):
             video_admin.save_model(None, video, None, False)
         mock_get_queue.assert_not_called()
+
+    @patch("django_rq.get_queue")
+    def test_metadata_update_does_not_enqueue(self, mock_get_queue):
+        """Do not reconvert when only metadata changes."""
+        video = Video.objects.create(
+            title="Old title", description="Test video",
+            category="Nature", thumbnail="thumbnail/demo.jpg",
+            original_video="videos/demo.mp4",
+        )
+        video.title = "New title"
+        video_admin = admin.site._registry[Video]
+        with self.captureOnCommitCallbacks(execute=True):
+            video_admin.save_model(None, video, None, True)
+        mock_get_queue.assert_not_called()
+
+    @patch("django_rq.get_queue")
+    def test_replacing_source_enqueues_processing(self, mock_get_queue):
+        """Reconvert when the original video changes."""
+        video = Video.objects.create(
+            title="Demo", description="Test video",
+            category="Nature", thumbnail="thumbnail/demo.jpg",
+            original_video="videos/old.mp4",
+        )
+        video.original_video = "videos/new.mp4"
+        video_admin = admin.site._registry[Video]
+        with self.captureOnCommitCallbacks(execute=True):
+            video_admin.save_model(None, video, None, True)
+        mock_get_queue.return_value.enqueue.assert_called_once_with(
+            process_video, video.pk
+        )

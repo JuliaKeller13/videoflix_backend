@@ -1,5 +1,4 @@
 import django_rq
-
 from django.contrib import admin
 from django.db import transaction
 
@@ -14,9 +13,14 @@ class VideoAdmin(admin.ModelAdmin):
     list_display = ("title", "category", "created_at")
 
     def save_model(self, request, obj, form, change):
-        """Save a video and enqueue its conversion after commit."""
+        """Queue conversion only when the original video changes."""
+        previous_file = None
+        if change:
+            previous_file = Video.objects.filter(pk=obj.pk).values_list(
+                "original_video", flat=True
+            ).first()
         super().save_model(request, obj, form, change)
-        if not obj.original_video:
+        if not obj.original_video or previous_file == obj.original_video.name:
             return
         transaction.on_commit(
             lambda: django_rq.get_queue("default").enqueue(
