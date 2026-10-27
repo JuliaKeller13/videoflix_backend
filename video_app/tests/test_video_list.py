@@ -36,6 +36,7 @@ class VideoListTests(APITestCase):
         Video.objects.create(
             title="Test Movie", description="Test Description",
             category="Drama", thumbnail="thumbnail/test.jpg",
+            processing_status=Video.ProcessingStatus.READY,
         )
         response = self.client.get(self.url)
         self.assertEqual(response.status_code, status.HTTP_200_OK)
@@ -51,6 +52,7 @@ class VideoListTests(APITestCase):
         Video.objects.create(
             title="Test Movie", description="Test Description",
             category="Drama", thumbnail="thumbnail/test.jpg",
+            processing_status=Video.ProcessingStatus.READY,
         )
         response = self.client.get(self.url)
         self.assertEqual(

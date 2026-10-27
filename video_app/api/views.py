@@ -1,4 +1,3 @@
-
 import re
 from pathlib import Path
 
@@ -14,9 +13,11 @@ from video_app.models import Video
 
 
 class VideoListView(ListAPIView):
-    """Return all videos to authenticated users."""
+    """Return ready videos to authenticated users."""
 
-    queryset = Video.objects.order_by("-created_at")
+    queryset = Video.objects.filter(
+        processing_status=Video.ProcessingStatus.READY
+    ).order_by("-created_at")
     serializer_class = VideoSerializer
     permission_classes = [IsAuthenticated]
 
