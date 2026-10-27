@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib import admin
 from django.db import transaction
 
+from video_app.forms import VideoAdminForm
 from video_app.models import Video
 from video_app.services import process_video
 
@@ -50,6 +51,8 @@ def _finalize_video_save(movie_id, previous, old_thumbnail, replaced):
 class VideoAdmin(admin.ModelAdmin):
     """Manage videos and schedule their processing."""
 
+    form = VideoAdminForm
+    readonly_fields = ("processing_status",)
     list_display = ("title", "category", "created_at")
 
     def _previous_source(self, obj, change):
