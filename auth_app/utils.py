@@ -30,9 +30,7 @@ def send_password_reset_email(user):
     """Send a password reset link to the user."""
     uid = urlsafe_base64_encode(force_bytes(user.pk))
     token = default_token_generator.make_token(user)
-    frontend_url = urljoin(
-        settings.FRONTEND_ACTIVATION_URL, "confirm_password.html"
-    )
+    frontend_url = urljoin(settings.FRONTEND_ACTIVATION_URL, "confirm_password.html")
     link = f"{frontend_url}?{urlencode({'uid': uid, 'token': token})}"
     send_mail(
         subject="Reset your Videoflix password",

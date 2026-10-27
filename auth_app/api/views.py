@@ -107,8 +107,7 @@ class TokenRefreshView(APIView):
         except (KeyError, TokenError, AuthenticationFailed):
             return Response({"message": "Invalid refresh token."}, status=401)
         response = Response({"message": "Token refreshed."}, status=200)
-        response.set_cookie(
-            "access_token", str(access), httponly=True,
+        response.set_cookie("access_token", str(access), httponly=True,
             secure=not settings.DEBUG, samesite="Lax"
         )
         return response
@@ -173,9 +172,7 @@ class PasswordConfirmView(APIView):
             raise ValidationError(
                 {"detail": "Invalid or expired reset link."}
             ) from exc
-        if not user.is_active or not default_token_generator.check_token(
-            user, token
-        ):
+        if not user.is_active or not default_token_generator.check_token(user, token):
             raise ValidationError({"detail": "Invalid or expired reset link."})
         return user
 
