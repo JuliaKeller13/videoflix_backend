@@ -26,6 +26,7 @@ class VideoPlaylistTests(APITestCase):
             description="Test Description",
             category="Drama",
             thumbnail="thumbnail/test.jpg",
+            processing_status=Video.ProcessingStatus.READY,
         )
 
     def setUp(self):

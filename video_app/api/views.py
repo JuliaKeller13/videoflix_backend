@@ -12,6 +12,14 @@ from video_app.api.serializers import VideoSerializer
 from video_app.models import Video
 
 
+def _require_ready_video(movie_id):
+    """Reject videos that are missing or not ready."""
+    get_object_or_404(
+        Video, pk=movie_id,
+        processing_status=Video.ProcessingStatus.READY,
+    )
+
+
 class VideoListView(ListAPIView):
     """Return ready videos to authenticated users."""
 
@@ -23,13 +31,13 @@ class VideoListView(ListAPIView):
 
 
 class VideoPlaylistView(APIView):
-    """Deliver HLS playlists to authenticated users."""
+    """Deliver HLS playlists for ready videos."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution):
         """Return the requested HLS playlist or HTTP 404."""
-        get_object_or_404(Video, pk=movie_id)
+        _require_ready_video(movie_id)
         if resolution not in ("480p", "720p", "1080p"):
             raise Http404("Unsupported resolution.")
         folder = Path(settings.MEDIA_ROOT) / "hls" / str(movie_id)
@@ -43,13 +51,13 @@ class VideoPlaylistView(APIView):
 
 
 class VideoSegmentView(APIView):
-    """Deliver HLS video segments to authenticated users."""
+    """Deliver HLS segments for ready videos."""
 
     permission_classes = [IsAuthenticated]
 
     def get(self, request, movie_id, resolution, segment):
         """Return a binary TS segment or HTTP 404."""
-        get_object_or_404(Video, pk=movie_id)
+        _require_ready_video(movie_id)
         if resolution not in ("480p", "720p", "1080p"):
             raise Http404("Unsupported resolution.")
         if not re.fullmatch(r"[A-Za-z0-9_-]+\.ts", segment):
