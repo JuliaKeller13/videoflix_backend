@@ -98,20 +98,34 @@ class TokenRefreshView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
+    def _get_access_token(self, raw_token):
+        """Validate the refresh token and its user."""
+        try:
+            access = RefreshToken(raw_token).access_token
+            JWTAuthentication().get_user(access)
+            return access
+        except (TokenError, AuthenticationFailed):
+            return None
+
     def post(self, request):
         """Issue a new access token from a refresh cookie."""
         validate_origin(request)
-        try:
-            refresh = RefreshToken(request.COOKIES["refresh_token"])
-            access = refresh.access_token
-            JWTAuthentication().get_user(access)
-        except (KeyError, TokenError, AuthenticationFailed):
+        if "refresh_token" not in request.COOKIES:
+            return Response({"detail": "Refresh token missing."}, status=400)
+        access = self._get_access_token(request.COOKIES["refresh_token"])
+        if access is None:
             return Response({"message": "Invalid refresh token."}, status=401)
-        response = Response({"message": "Token refreshed."}, status=200)
-        response.set_cookie("access_token", str(access), httponly=True,
-            secure=not settings.DEBUG, samesite="Lax"
+        response = Response({"detail": "Token refreshed"}, status=200)
+        response.set_cookie(
+            "access_token", str(access), httponly=True,
+            secure=not settings.DEBUG, samesite="Lax",
         )
         return response
+
+LOGOUT_SUCCESS_MESSAGE = (
+    "Logout successful! All tokens will be deleted. "
+    "Refresh token is now invalid."
+)
 
 
 class LogoutView(APIView):
@@ -120,20 +134,25 @@ class LogoutView(APIView):
     permission_classes = [AllowAny]
     authentication_classes = []
 
+    def _revoke_token(self, token):
+        """Blacklist a valid refresh token."""
+        try:
+            RefreshToken(token).blacklist()
+        except TokenError:
+            pass
+
     def post(self, request):
-        """Revoke the refresh token and remove cookies."""
+        """Revoke refresh tokens and delete authentication cookies."""
         validate_origin(request)
-        raw_token = request.COOKIES.get("refresh_token")
-        if raw_token:
-            try:
-                RefreshToken(raw_token).blacklist()
-            except TokenError:
-                pass
-        response = Response({"message": "Logout successful."}, status=200)
-        options = {"path": "/", "samesite": "Lax"}
-        response.delete_cookie("access_token", **options)
-        response.delete_cookie("refresh_token", **options)
+        token = request.COOKIES.get("refresh_token")
+        if token:
+            self._revoke_token(token)
+        detail = LOGOUT_SUCCESS_MESSAGE if token else "Refresh token missing."
+        response = Response({"detail": detail}, status=200 if token else 400)
+        for name in ("access_token", "refresh_token"):
+            response.delete_cookie(name, path="/", samesite="Lax")
         return response
+
 
 
 class PasswordResetView(APIView):

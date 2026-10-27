@@ -31,13 +31,17 @@ class LogoutTests(APITestCase):
             self.assertEqual(response.cookies[name].value, "")
             self.assertEqual(response.cookies[name]["max-age"], 0)
 
-    def test_logout_without_cookies_succeeds(self):
-        """Allow logout when authentication cookies are absent."""
-        self.client.cookies.clear()
+    def test_logout_without_refresh_cookie_returns_400(self):
+        """Report a missing refresh token and clear remaining cookies."""
+        del self.client.cookies["refresh_token"]
         response = self.client.post(
             "/api/logout/", HTTP_ORIGIN=TRUSTED_ORIGIN
         )
-        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        for name in ("access_token", "refresh_token"):
+            self.assertIn(name, response.cookies)
+            self.assertEqual(response.cookies[name]["max-age"], 0)
+
 
     def test_logout_rejects_untrusted_origin(self):
         """Reject logout requests from an untrusted website."""
@@ -68,3 +72,14 @@ class LogoutTests(APITestCase):
             "/api/token/refresh/", HTTP_ORIGIN=TRUSTED_ORIGIN
         )
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+
+    def test_logout_success_matches_documentation(self):
+        """Return the documented logout success response."""
+        response = self.client.post(
+            "/api/logout/", HTTP_ORIGIN=TRUSTED_ORIGIN
+        )
+        expected = (
+            "Logout successful! All tokens will be deleted. "
+            "Refresh token is now invalid."
+        )
+        self.assertEqual(response.data, {"detail": expected})

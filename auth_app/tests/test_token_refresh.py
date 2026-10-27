@@ -43,7 +43,7 @@ class TokenRefreshTests(APITestCase):
         response = self.client.post(
             "/api/token/refresh/", HTTP_ORIGIN=TRUSTED_ORIGIN
         )
-        self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
 
     def test_refresh_rejects_invalid_cookie(self):
         """Reject an invalid refresh token."""
@@ -82,3 +82,11 @@ class TokenRefreshTests(APITestCase):
         """Reject refresh requests without an origin."""
         response = self.client.post("/api/token/refresh/")
         self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+    def test_refresh_success_matches_documentation(self):
+        """Return the documented message without exposing the JWT."""
+        response = self.client.post(
+            "/api/token/refresh/", HTTP_ORIGIN=TRUSTED_ORIGIN
+        )
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"detail": "Token refreshed"})
