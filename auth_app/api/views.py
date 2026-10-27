@@ -64,7 +64,8 @@ class ActivateView(APIView):
         if default_token_generator.check_token(user, token):
             user.is_active = True
             user.save(update_fields=["is_active"])
-            return Response({"message": "Account activated."}, status=200)
+            return Response(
+                {"message": "Account successfully activated."}, status=200)
         else:
             return Response({"message": "Invalid activation link."}, status=400)
 

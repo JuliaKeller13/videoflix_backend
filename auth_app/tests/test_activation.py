@@ -24,6 +24,7 @@ class ActivationTests(APITestCase):
         user.refresh_from_db()
 
         self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data, {"message": "Account successfully activated."}    )
         self.assertTrue(user.is_active)
 
     def test_activation_rejects_invalid_token(self):
