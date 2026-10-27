@@ -27,3 +27,7 @@ class Video(models.Model):
         default=ProcessingStatus.PENDING,
     )
     created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        """Return the video title."""
+        return self.title

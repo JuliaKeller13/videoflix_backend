@@ -50,3 +50,12 @@ class VideoModelTests(TestCase):
         )
         video.full_clean()
         self.assertFalse(video.thumbnail)
+
+    def test_str_returns_video_title(self):
+        """Represent a video by its title."""
+        video = Video(
+            title="Test Movie",
+            description="Test Description",
+            category="Drama",
+        )
+        self.assertEqual(str(video), "Test Movie")
