@@ -15,6 +15,15 @@
 
 </div>
 
+## Table of Contents
+
+- [About](#about)
+- [Quick Start](#quick-start)
+- [Email Configuration](#email-configuration)
+- [API Overview](#api-overview)
+- [Tests and Useful Commands](#tests-and-useful-commands)
+- [Project Structure](#project-structure)
+
 ## About
 
 Videoflix is a video streaming backend developed as part of the **Developer Akademie Backend curriculum**. The frontend is supplied separately; this repository contains my implementation of the backend and its automated tests.
