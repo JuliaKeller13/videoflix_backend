@@ -39,10 +39,10 @@ class EmailSettingsTests(SimpleTestCase):
             self._load_backend(SMTP_BACKEND), SMTP_BACKEND
         )
 
-    def test_environment_template_uses_console(self):
-        """Let fresh installations work without SMTP credentials."""
+    def test_environment_template_uses_smtp(self):
+        """Use SMTP as the default email backend."""
         values = dotenv_values(PROJECT_ROOT / ".env.template")
-        self.assertEqual(values.get("EMAIL_BACKEND"), CONSOLE_BACKEND)
+        self.assertEqual(values.get("EMAIL_BACKEND"), SMTP_BACKEND)
 
 
 @override_settings(EMAIL_BACKEND=CONSOLE_BACKEND)

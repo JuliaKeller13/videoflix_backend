@@ -3,6 +3,17 @@ from django.db import models
 
 class Video(models.Model):
     """Store video metadata and processing information."""
+    class Category(models.TextChoices):
+        ACTION = "Action", "Action"
+        ADVENTURE = "Adventure", "Adventure"
+        COMEDY = "Comedy", "Comedy"
+        DOCUMENTARY = "Documentary", "Documentary"
+        DRAMA = "Drama", "Drama"
+        FANTASY = "Fantasy", "Fantasy"
+        HORROR = "Horror", "Horror"
+        NATURE = "Nature", "Nature"
+        SCI_FI = "Sci-Fi", "Sci-Fi"
+        THRILLER = "Thriller", "Thriller"
 
     class ProcessingStatus(models.TextChoices):
         PENDING = "pending", "Pending"
@@ -12,7 +23,7 @@ class Video(models.Model):
 
     title = models.CharField(max_length=255)
     description = models.TextField()
-    category = models.CharField(max_length=100)
+    category = models.CharField(max_length=100, choices=Category.choices)
     thumbnail = models.ImageField(
         upload_to="thumbnail/",
         blank=True,

@@ -2,7 +2,10 @@ from tempfile import TemporaryDirectory
 
 from django.core.files.uploadedfile import SimpleUploadedFile
 from django.test import TestCase, override_settings
+from django.core.exceptions import ValidationError
+from django.forms import Select
 
+from video_app.forms import VideoAdminForm
 from video_app.models import Video
 
 
@@ -59,3 +62,23 @@ class VideoModelTests(TestCase):
             category="Drama",
         )
         self.assertEqual(str(video), "Test Movie")
+
+    def test_category_has_predefined_choices(self):
+        """Preserve existing categories in the fixed choices."""
+        choices = Video._meta.get_field("category").choices or []
+        self.assertIn(("Nature", "Nature"), choices)
+        self.assertIn(("Action", "Action"), choices)
+        self.assertIn(("Drama", "Drama"), choices)
+
+    def test_invalid_category_is_rejected(self):
+        """Reject arbitrary category names."""
+        video = Video(
+            title="Demo", description="Test", category="ASD",
+        )
+        with self.assertRaises(ValidationError):
+            video.full_clean()
+
+    def test_admin_category_uses_dropdown(self):
+        """Offer a dropdown instead of a free-text input."""
+        field = VideoAdminForm.base_fields["category"]
+        self.assertIsInstance(field.widget, Select)
