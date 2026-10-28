@@ -34,7 +34,7 @@ The application supports email-based registration and password reset, **JWT auth
 
 ## Quick Start
 
-**Prerequisites:** Git and Docker Desktop with Docker Compose. Python, FFmpeg, and the RQ worker run inside Docker; no local installation or SMTP account is required for the default setup.
+**Prerequisites:** Git, Docker Desktop with Docker Compose, and valid SMTP credentials for account activation and password reset emails. Python, FFmpeg, and the RQ worker run inside Docker; no local installation is required. For local testing without SMTP credentials, the console email backend is available as an alternative.
 
 ### 1. Clone and configure
 
@@ -54,10 +54,12 @@ Edit `.env` and provide:
 | `DB_NAME`, `DB_USER`, `DB_PASSWORD` | PostgreSQL database credentials |
 | `DJANGO_SUPERUSER_USERNAME`, `DJANGO_SUPERUSER_PASSWORD` | Django Admin login |
 | `FRONTEND_ACTIVATION_URL` | Activation page of the supplied frontend |
+| `EMAIL_HOST`, `EMAIL_PORT`, `EMAIL_HOST_USER`, `EMAIL_HOST_PASSWORD` | SMTP server and credentials for email delivery |
+| `DEFAULT_FROM_EMAIL` | Sender address authorized by the SMTP provider |
 
 Keep `FRONTEND_ACTIVATION_URL=http://127.0.0.1:5500/pages/auth/activate.html` when using the frontend with VS Code Live Server at port 5500. The backend uses this URL to generate email links and determine the allowed frontend origin.
 
-**Never commit `.env` or real credentials.** The `.env.template` contains only example values; email delivery can be configured separately below.
+**Never commit `.env` or real credentials.** The `.env.template` contains example SMTP values; replace the placeholder token with valid credentials in your private `.env` file. See [Email Configuration](#email-configuration) for details.
 
 ### 2. Start Docker
 
@@ -86,19 +88,11 @@ Clone the [official Videoflix frontend](https://github.com/Developer-Akademie-Ba
 
 The provided frontend already sends requests to `http://127.0.0.1:8000/api/` with authentication cookies. No frontend source changes are required.
 
-**To test registration:** Sign up in the frontend, retrieve the activation link from the Docker logs (or your email inbox when using SMTP), open it, and then log in. Password reset follows the same email-based workflow.
+**To test registration:** Sign up in the frontend, open the activation link delivered to your email inbox, and then log in. Password reset follows the same email-based workflow. When using the optional console backend, activation and reset links are available through `docker compose logs -f web` instead.
 
 ## Email Configuration
 
-Videoflix supports two email backends for account activation and password resets:
-
-**Console backend (default):** The `.env.template` sets `EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend`. Emails are printed in the backend container logs instead of being delivered to an inbox. This allows reviewers to test activation and password reset without SMTP credentials:
-
-```bash
-docker compose logs -f web
-```
-
-**SMTP delivery (optional):** To send real emails, change the following values in your private `.env` file. This example uses Mailtrap Email Sending rather than its testing sandbox:
+Videoflix uses **SMTP by default** to send account activation and password reset emails. Configure valid SMTP credentials in your private `.env` file before testing these workflows. The `.env.template` includes an example using Mailtrap Email Sending:
 
 ```dotenv
 EMAIL_BACKEND=django.core.mail.backends.smtp.EmailBackend
@@ -111,13 +105,27 @@ EMAIL_USE_SSL=False
 DEFAULT_FROM_EMAIL=hello@demomailtrap.co
 ```
 
-The Mailtrap demo domain can deliver only to the email address associated with the Mailtrap account. Sending to other recipients requires a verified sending domain and an authorized sender address. Never commit SMTP tokens or your local `.env` file.
+The Mailtrap demo domain can deliver emails only to the address associated with the Mailtrap account. Sending to other recipients requires a verified sending domain and an authorized sender address.
 
-After changing `.env`, recreate the web container to apply the new environment variables:
+**Console backend (optional):** For local testing without SMTP credentials, change `EMAIL_BACKEND` in your private `.env` file to:
+
+```dotenv
+EMAIL_BACKEND=django.core.mail.backends.console.EmailBackend
+```
+
+Emails will then be printed in the backend container logs instead of being delivered to an inbox:
+
+```bash
+docker compose logs -f web
+```
+
+After changing `.env`, recreate the web container to apply the updated environment variables:
 
 ```bash
 docker compose up -d --force-recreate web
 ```
+
+Never commit real SMTP credentials or your private `.env` file.
 
 ## API Overview
 
