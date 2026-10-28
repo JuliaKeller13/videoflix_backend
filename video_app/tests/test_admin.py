@@ -181,3 +181,42 @@ class VideoAdminTests(TestCase):
         mock_get_queue.return_value.enqueue.assert_called_once_with(
             process_video, video.pk
         )
+
+    @patch("django_rq.get_queue")
+    def test_clearing_thumbnail_queues_regeneration(self, mock_queue):
+        """Regenerate a removed thumbnail without resetting HLS."""
+        video = self._create_saved_video()
+        url = reverse("admin:video_app_video_change", args=[video.pk])
+        data = {
+            "title": video.title, "description": video.description,
+            "category": video.category, "thumbnail-clear": "on",
+            "_save": "Save",
+        }
+        with self.captureOnCommitCallbacks(execute=True):
+            response = self.client.post(url, data)
+        self.assertEqual(response.status_code, 302)
+        mock_queue.return_value.enqueue.assert_called_once()
+        video.refresh_from_db()
+        self.assertFalse(video.thumbnail)
+        self.assertEqual(video.processing_status, "ready")
+
+    @patch("django_rq.get_queue")
+    def test_thumbnail_clear_without_source_skips_queue(self, mock_queue):
+        """Avoid regeneration when no original video exists."""
+        video = Video.objects.create(
+            title="Demo", description="Test", category="Nature",
+            thumbnail="thumbnail/custom.jpg",
+        )
+        video.thumbnail = ""
+        form = SimpleNamespace(changed_data=["thumbnail"])
+        self._save_change(video, form=form)
+        mock_queue.assert_not_called()
+
+    @patch("django_rq.get_queue")
+    def test_thumbnail_replacement_skips_regeneration(self, mock_queue):
+        """Keep a newly selected custom thumbnail."""
+        video = self._create_saved_video()
+        video.thumbnail = "thumbnail/replacement.jpg"
+        form = SimpleNamespace(changed_data=["thumbnail"])
+        self._save_change(video, form=form)
+        mock_queue.assert_not_called()

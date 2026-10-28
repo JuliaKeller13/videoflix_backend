@@ -41,6 +41,17 @@ def generate_thumbnail(source, movie_id):
     subprocess.run(command, check=True, timeout=30)
     return thumbnail
 
+def regenerate_missing_thumbnail(movie_id):
+    """Restore a missing thumbnail without converting HLS streams."""
+    video = Video.objects.get(pk=movie_id)
+    if not video.original_video or video.thumbnail:
+        return
+    thumbnail = generate_thumbnail(video.original_video.path, video.pk)
+    video.thumbnail = Path(thumbnail).relative_to(
+        settings.MEDIA_ROOT
+    ).as_posix()
+    video.save(update_fields=["thumbnail"])
+
 
 def _process_video_files(video):
     """Generate a missing thumbnail and all HLS resolutions."""

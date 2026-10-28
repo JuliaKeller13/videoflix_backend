@@ -1,4 +1,5 @@
 from django.contrib.auth import get_user_model
+from django.contrib.staticfiles import finders
 from rest_framework import status
 from rest_framework.test import APITestCase
 from rest_framework_simplejwt.tokens import RefreshToken
@@ -58,4 +59,37 @@ class VideoListTests(APITestCase):
         self.assertEqual(
             response.data[0]["thumbnail_url"],
             "http://testserver/media/thumbnail/test.jpg",
+        )
+
+    def test_missing_thumbnail_uses_fallback(self):
+        """Return a default image when no thumbnail exists."""
+        Video.objects.create(
+            title="Demo", description="Test", category="Nature",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+        response = self.client.get(self.url)
+        self.assertEqual(
+            response.data[0]["thumbnail_url"],
+            "http://testserver/static/default_thumbnail.svg",
+        )
+
+    def test_cleared_thumbnail_uses_fallback(self):
+        """Return a default image after clearing the thumbnail."""
+        video = Video.objects.create(
+            title="Demo", description="Test", category="Nature",
+            thumbnail="thumbnail/old.jpg",
+            processing_status=Video.ProcessingStatus.READY,
+        )
+        video.thumbnail = ""
+        video.save(update_fields=["thumbnail"])
+        response = self.client.get(self.url)
+        self.assertEqual(
+            response.data[0]["thumbnail_url"],
+            "http://testserver/static/default_thumbnail.svg",
+        )
+
+    def test_fallback_thumbnail_exists(self):
+        """Ensure the fallback is shipped with the backend."""
+        self.assertIsNotNone(
+            finders.find("default_thumbnail.svg")
         )

@@ -110,3 +110,40 @@ class VideoJobTests(TestCase):
         mock_image.assert_not_called()
         video.refresh_from_db()
         self.assertEqual(video.thumbnail.name, "thumbnail/custom.jpg")
+
+    @patch("video_app.services.convert_video_to_hls")
+    @patch("video_app.services.generate_thumbnail")
+    def test_thumbnail_recovery_preserves_hls(self, image, hls):
+        """Regenerate only the thumbnail of a ready video."""
+        video = Video.objects.create(
+            title="Demo", description="Test", category="Nature",
+            original_video="videos/demo.mp4", processing_status="ready",
+        )
+        image.return_value = (
+            Path(settings.MEDIA_ROOT) / "thumbnail" / f"{video.pk}.jpg"
+        )
+        services.regenerate_missing_thumbnail(video.pk)
+        video.refresh_from_db()
+        self.assertEqual(video.thumbnail.name, f"thumbnail/{video.pk}.jpg")
+        self.assertEqual(video.processing_status, "ready")
+        hls.assert_not_called()
+
+    @patch("video_app.services.generate_thumbnail")
+    def test_regeneration_preserves_existing_thumbnail(self, image):
+        """Never overwrite an existing thumbnail."""
+        video = Video.objects.create(
+            title="Demo", description="Test", category="Nature",
+            thumbnail="thumbnail/custom.jpg",
+            original_video="videos/demo.mp4",
+        )
+        services.regenerate_missing_thumbnail(video.pk)
+        image.assert_not_called()
+
+    @patch("video_app.services.generate_thumbnail")
+    def test_regeneration_skips_missing_original(self, image):
+        """Skip regeneration when no original video is available."""
+        video = Video.objects.create(
+            title="Demo", description="Test", category="Nature",
+        )
+        services.regenerate_missing_thumbnail(video.pk)
+        image.assert_not_called()

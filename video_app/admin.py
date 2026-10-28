@@ -8,7 +8,7 @@ from django.db import transaction
 
 from video_app.forms import VideoAdminForm
 from video_app.models import Video
-from video_app.services import process_video
+from video_app.services import process_video, regenerate_missing_thumbnail
 
 
 def _source_changed(obj, form, previous):
@@ -47,6 +47,19 @@ def _finalize_video_save(movie_id, previous, old_thumbnail, replaced):
         django_rq.get_queue("default").enqueue(process_video, movie_id)
 
 
+def _queue_cleared_thumbnail(obj, form):
+    """Queue thumbnail regeneration after an Admin removal."""
+    if not form or "thumbnail" not in form.changed_data:
+        return
+    if obj.thumbnail or not obj.original_video:
+        return
+    transaction.on_commit(
+        lambda: django_rq.get_queue("default").enqueue(
+            regenerate_missing_thumbnail, obj.pk
+        )
+    )
+
+
 @admin.register(Video)
 class VideoAdmin(admin.ModelAdmin):
     """Manage videos and schedule their processing."""
@@ -75,3 +88,5 @@ class VideoAdmin(admin.ModelAdmin):
                     obj.pk, previous, old_thumbnail, change
                 )
             )
+        elif change:
+            _queue_cleared_thumbnail(obj, form)
